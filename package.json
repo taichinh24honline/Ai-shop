@@ -1,1 +1,14 @@
-
+{
+  "name": "ai-virtual-tryon-shop",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Trang web mua sắm thời trang tích hợp AI Virtual Try-On",
+  "main": "index.html",
+  "scripts": {
+    "start": "serve"
+  },
+  "dependencies": {
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0"
+  }
+}
