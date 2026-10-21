@@ -1,6 +1,5 @@
-const { useState, useEffect } = React;
+const { useState } = React;
 
-// Danh sách sản phẩm mẫu
 const PRODUCTS = [
   {
     id: 1,
@@ -9,8 +8,7 @@ const PRODUCTS = [
     price: 1850000,
     rating: 4.9,
     image: "https://images.unsplash.com/photo-1566174053879-31528523f8ae?auto=format&fit=crop&w=600&q=80",
-    description: "Đầm thiết kế tôn dáng thanh lịch, phù hợp cho các buổi tiệc tối và sự kiện sang trọng.",
-    fitStyle: "Đồng hồ cát / Mảnh khảnh"
+    description: "Đầm thiết kế tôn dáng thanh lịch, phù hợp cho các buổi tiệc tối và sự kiện sang trọng."
   },
   {
     id: 2,
@@ -19,8 +17,7 @@ const PRODUCTS = [
     price: 950000,
     rating: 4.8,
     image: "https://images.unsplash.com/photo-1591047139829-d91aecb6caea?auto=format&fit=crop&w=600&q=80",
-    description: "Phom dáng Oversized hiện đại, dễ dàng phối cùng quần jeans hoặc chân váy.",
-    fitStyle: "Mọi dáng người"
+    description: "Phom dáng Oversized hiện đại, dễ dàng phối cùng quần jeans hoặc chân váy."
   },
   {
     id: 3,
@@ -29,8 +26,7 @@ const PRODUCTS = [
     price: 520000,
     rating: 4.7,
     image: "https://images.unsplash.com/photo-1602810318383-e386cc2a3ccf?auto=format&fit=crop&w=600&q=80",
-    description: "Chất liệu lụa mềm mại, thoáng mát, mang lại vẻ thanh lịch chốn công sở.",
-    fitStyle: "Dáng quả lê / Cân đối"
+    description: "Chất liệu lụa mềm mại, thoáng mát, mang lại vẻ thanh lịch chốn công sở."
   },
   {
     id: 4,
@@ -39,8 +35,7 @@ const PRODUCTS = [
     price: 680000,
     rating: 4.6,
     image: "https://images.unsplash.com/photo-1583496661160-fb5886a0aaaa?auto=format&fit=crop&w=600&q=80",
-    description: "Thiết kế xếp ly xòe nhẹ giúp che khuyết điểm vòng 3 hiệu quả.",
-    fitStyle: "Dáng quả táo / Cân đối"
+    description: "Thiết kế xếp ly xòe nhẹ giúp che khuyết điểm vòng 3 hiệu quả."
   }
 ];
 
@@ -49,61 +44,72 @@ function App() {
   const [cart, setCart] = useState([]);
   const [selectedProduct, setSelectedProduct] = useState(PRODUCTS[0]);
   
-  // Trạng thái AI Avatar
-  const [avatarMode, setAvatarMode] = useState('custom'); // 'custom' | 'upload'
+  // Cấu hình AI & API Key
+  const [apiKey, setApiKey] = useState('');
+  const [avatarMode, setAvatarMode] = useState('custom');
   const [userAvatar, setUserAvatar] = useState(null);
   const [avatarConfig, setAvatarConfig] = useState({
     height: 165,
     weight: 52,
     skinTone: 'Sáng',
-    bodyShape: 'Đồng hồ cát',
-    hairColor: 'Đen'
+    bodyShape: 'Đồng hồ cát'
   });
 
-  // Trạng thái thử đồ AI
   const [isProcessing, setIsProcessing] = useState(false);
-  const [tryOnResult, setTryOnResult] = useState(null);
-  const [fitScore, setFitScore] = useState(null);
+  const [aiAnalysis, setAiAnalysis] = useState(null);
 
-  // Thêm vào giỏ hàng
   const addToCart = (product) => {
     setCart(prev => [...prev, product]);
     alert(`Đã thêm "${product.name}" vào giỏ hàng!`);
   };
 
-  // Tải ảnh cá nhân
   const handleImageUpload = (e) => {
     const file = e.target.files[0];
     if (file) {
       const reader = new FileReader();
-      reader.onloadend = () => {
-        setUserAvatar(reader.result);
-      };
+      reader.onloadend = () => setUserAvatar(reader.result);
       reader.readAsDataURL(file);
     }
   };
 
-  // Giả lập AI Ghép Đồ
-  const handleTryOn = () => {
-    setIsProcessing(true);
-    setTryOnResult(null);
+  // Gọi Gemini API thực tế
+  const handleRealAITryOn = async () => {
+    if (!apiKey.trim()) {
+      alert("Vui lòng nhập Google Gemini API Key của bạn để sử dụng AI thực tế!");
+      return;
+    }
 
-    setTimeout(() => {
-      setIsProcessing(false);
-      setTryOnResult(selectedProduct.image);
-      // Chấm điểm độ hợp theo dáng người
-      const score = Math.floor(Math.random() * 15) + 85; 
-      setFitScore({
-        overall: score,
-        colorMatch: "95% - Rất hợp với tone da",
-        shapeMatch: "90% - Tôn đường nét cơ thể"
+    setIsProcessing(true);
+    setAiAnalysis(null);
+
+    try {
+      const promptText = `Bạn là một chuyên gia Stylist thời trang cao cấp. Khách hàng có thông số vóc dáng: Chiều cao ${avatarConfig.height}cm, Cân nặng ${avatarConfig.weight}kg, Dáng người ${avatarConfig.bodyShape}, Tone da ${avatarConfig.skinTone}. Họ muốn thử trang phục: "${selectedProduct.name}" (${selectedProduct.description}). Hãy đánh giá xem sản phẩm này có phù hợp với họ không, chấm điểm từ 1 đến 100, và đưa ra lời khuyên ngắn gọn, tinh tế bằng tiếng Việt. Trả về định dạng đoạn văn ngắn gọn, chuyên nghiệp.`;
+
+      const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [{ parts: [{ text: promptText }] }]
+        })
       });
-    }, 2000);
+
+      const data = await response.json();
+      const textResult = data.candidates?.[0]?.content?.parts?.[0]?.text || "AI không thể phân tích lúc này. Vui lòng thử lại.";
+      
+      setAiAnalysis({
+        text: textResult,
+        image: selectedProduct.image
+      });
+    } catch (error) {
+      console.error(error);
+      alert("Lỗi kết nối với Gemini API. Vui lòng kiểm tra lại Key.");
+    } finally {
+      setIsProcessing(false);
+    }
   };
 
   return (
-    <div className="min-h-screen flex flex-col">
-      {/* Header / Navigation */}
+    <div className="min-h-screen flex flex-col bg-slate-50 text-slate-900">
       <header className="bg-slate-900 text-white sticky top-0 z-50 shadow-md">
         <div className="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between">
           <div className="flex items-center space-x-2 cursor-pointer" onClick={() => setActiveTab('shop')}>
@@ -128,33 +134,28 @@ function App() {
             </button>
           </nav>
 
-          <div className="flex items-center space-x-4">
-            <div className="relative">
-              <span className="text-xl">🛒</span>
-              {cart.length > 0 && (
-                <span className="absolute -top-2 -right-2 bg-amber-500 text-slate-900 font-bold text-xs w-5 h-5 rounded-full flex items-center justify-center">
-                  {cart.length}
-                </span>
-              )}
-            </div>
+          <div className="flex items-center space-x-2">
+            <span className="text-xl">🛒</span>
+            <span className="bg-amber-500 text-slate-900 font-bold text-xs px-2 py-0.5 rounded-full">
+              {cart.length}
+            </span>
           </div>
         </div>
       </header>
 
-      {/* Main Content Area */}
       <main className="flex-1 max-w-7xl w-full mx-auto p-4 md:p-6">
         {activeTab === 'shop' && (
           <div>
             <div className="bg-gradient-to-r from-indigo-900 via-purple-900 to-slate-900 text-white rounded-2xl p-6 md:p-10 mb-8 shadow-xl">
               <h1 className="text-3xl md:text-5xl font-extrabold mb-4">Thử Đồ Thông Minh Cùng AI</h1>
               <p className="text-slate-300 max-w-2xl mb-6">
-                Tạo Avatar nhân vật chuẩn kích thước cơ thể bạn hoặc tải ảnh thật lên để AI giúp bạn khoác lên những bộ trang phục mới nhất!
+                Tích hợp Google Gemini AI phân tích vóc dáng và tư vấn trang phục chuẩn xác cho riêng bạn!
               </p>
               <button 
                 onClick={() => setActiveTab('tryon')}
                 className="bg-amber-400 text-slate-900 px-6 py-3 rounded-xl font-bold hover:bg-amber-300 transition shadow-lg"
               >
-                Trải Nghiệm Thử Đồ Ảo Ngay →
+                Mở Phòng Thử Đồ AI Ngay →
               </button>
             </div>
 
@@ -181,7 +182,7 @@ function App() {
                           onClick={() => { setSelectedProduct(product); setActiveTab('tryon'); }}
                           className="bg-slate-100 text-slate-800 px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-indigo-50 hover:text-indigo-600 transition"
                         >
-                          Thử đồ AI
+                          Thử AI
                         </button>
                         <button 
                           onClick={() => addToCart(product)}
@@ -198,177 +199,135 @@ function App() {
           </div>
         )}
 
-        {/* Try-On Studio Tab */}
         {activeTab === 'tryon' && (
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-            {/* Cột trái: Cấu hình Avatar / Người dùng */}
-            <div className="lg:col-span-4 bg-white p-6 rounded-2xl shadow-md border border-slate-100">
-              <h2 className="text-xl font-bold mb-4 text-slate-800 flex items-center gap-2">
-                <span>👤</span> Tạo Nhân Vật / Avatar AI
+            <div className="lg:col-span-4 bg-white p-6 rounded-2xl shadow-md border border-slate-100 space-y-4">
+              <h2 className="text-xl font-bold text-slate-800 flex items-center gap-2">
+                <span>🔑</span> Cấu Hình Gemini AI Key
               </h2>
-
-              <div className="flex border-b border-slate-200 mb-6">
-                <button 
-                  onClick={() => setAvatarMode('custom')}
-                  className={`flex-1 py-2 text-sm font-bold border-b-2 ${avatarMode === 'custom' ? 'border-amber-500 text-amber-600' : 'border-transparent text-slate-400'}`}
-                >
-                  Tùy chỉnh Chỉ số
-                </button>
-                <button 
-                  onClick={() => setAvatarMode('upload')}
-                  className={`flex-1 py-2 text-sm font-bold border-b-2 ${avatarMode === 'upload' ? 'border-amber-500 text-amber-600' : 'border-transparent text-slate-400'}`}
-                >
-                  Tải Ảnh Cá Nhân
-                </button>
+              <div>
+                <label className="text-xs font-bold text-slate-600 block mb-1">Nhập Google Gemini API Key:</label>
+                <input 
+                  type="password" 
+                  placeholder="AIzaSy..." 
+                  value={apiKey} 
+                  onChange={(e) => setApiKey(e.target.value)}
+                  className="w-full border border-slate-200 rounded-lg p-2 text-xs"
+                />
+                <p className="text-[10px] text-slate-400 mt-1">Key của bạn chỉ dùng trực tiếp trên trình duyệt để gọi AI tư vấn.</p>
               </div>
 
-              {avatarMode === 'custom' ? (
-                <div className="space-y-4">
-                  <div>
-                    <label className="text-xs font-bold text-slate-600 block mb-1">Chiều cao: {avatarConfig.height} cm</label>
-                    <input 
-                      type="range" min="150" max="190" value={avatarConfig.height}
-                      onChange={(e) => setAvatarConfig({...avatarConfig, height: e.target.value})}
-                      className="w-full accent-amber-500"
-                    />
-                  </div>
+              <hr className="border-slate-100 my-2" />
 
-                  <div>
-                    <label className="text-xs font-bold text-slate-600 block mb-1">Cân nặng: {avatarConfig.weight} kg</label>
-                    <input 
-                      type="range" min="40" max="90" value={avatarConfig.weight}
-                      onChange={(e) => setAvatarConfig({...avatarConfig, weight: e.target.value})}
-                      className="w-full accent-amber-500"
-                    />
-                  </div>
+              <h2 className="text-xl font-bold text-slate-800 flex items-center gap-2">
+                <span>👤</span> Thông Số Vóc Dáng
+              </h2>
 
-                  <div>
-                    <label className="text-xs font-bold text-slate-600 block mb-1">Dáng người</label>
-                    <select 
-                      value={avatarConfig.bodyShape}
-                      onChange={(e) => setAvatarConfig({...avatarConfig, bodyShape: e.target.value})}
-                      className="w-full border border-slate-200 rounded-lg p-2 text-sm"
-                    >
-                      <option value="Đồng hồ cát">Đồng hồ cát</option>
-                      <option value="Dáng quả lê">Dáng quả lê</option>
-                      <option value="Dáng quả táo">Dáng quả táo</option>
-                      <option value="Mảnh khảnh">Mảnh khảnh</option>
-                    </select>
-                  </div>
-
-                  <div>
-                    <label className="text-xs font-bold text-slate-600 block mb-1">Tone màu da</label>
-                    <select 
-                      value={avatarConfig.skinTone}
-                      onChange={(e) => setAvatarConfig({...avatarConfig, skinTone: e.target.value})}
-                      className="w-full border border-slate-200 rounded-lg p-2 text-sm"
-                    >
-                      <option value="Sáng">Trắng sáng</option>
-                      <option value="Trung bình">Trung bình / Tự nhiên</option>
-                      <option value="Bánh mật">Bánh mật / Ngăm</option>
-                    </select>
-                  </div>
+              <div className="space-y-3">
+                <div>
+                  <label className="text-xs font-bold text-slate-600 block mb-1">Chiều cao: {avatarConfig.height} cm</label>
+                  <input 
+                    type="range" min="150" max="190" value={avatarConfig.height}
+                    onChange={(e) => setAvatarConfig({...avatarConfig, height: e.target.value})}
+                    className="w-full accent-amber-500"
+                  />
                 </div>
-              ) : (
-                <div className="text-center p-6 border-2 border-dashed border-slate-200 rounded-xl">
-                  {userAvatar ? (
-                    <div>
-                      <img src={userAvatar} alt="User Avatar" className="h-48 mx-auto object-cover rounded-lg mb-3" />
-                      <button 
-                        onClick={() => setUserAvatar(null)}
-                        className="text-xs text-red-500 underline font-semibold"
-                      >
-                        Xóa & Chọn lại
-                      </button>
-                    </div>
-                  ) : (
-                    <div>
-                      <p className="text-sm text-slate-500 mb-3">Tải lên ảnh toàn thân của bạn để thử đồ chuẩn xác nhất</p>
-                      <input type="file" accept="image/*" onChange={handleImageUpload} className="hidden" id="photo-upload" />
-                      <label 
-                        htmlFor="photo-upload"
-                        className="cursor-pointer bg-slate-900 text-white px-4 py-2 rounded-lg text-xs font-bold inline-block hover:bg-slate-800"
-                      >
-                        Chọn ảnh từ máy
-                      </label>
-                    </div>
-                  )}
-                </div>
-              )}
 
-              {/* Sản phẩm đang chọn */}
-              <div className="mt-8 pt-6 border-t border-slate-100">
-                <span className="text-xs font-bold text-slate-400 uppercase">Sản phẩm đang chọn thử</span>
-                <div className="flex items-center space-x-3 mt-3">
-                  <img src={selectedProduct.image} className="w-16 h-16 object-cover rounded-lg" />
+                <div>
+                  <label className="text-xs font-bold text-slate-600 block mb-1">Cân nặng: {avatarConfig.weight} kg</label>
+                  <input 
+                    type="range" min="40" max="90" value={avatarConfig.weight}
+                    onChange={(e) => setAvatarConfig({...avatarConfig, weight: e.target.value})}
+                    className="w-full accent-amber-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-xs font-bold text-slate-600 block mb-1">Dáng người</label>
+                  <select 
+                    value={avatarConfig.bodyShape}
+                    onChange={(e) => setAvatarConfig({...avatarConfig, bodyShape: e.target.value})}
+                    className="w-full border border-slate-200 rounded-lg p-2 text-sm"
+                  >
+                    <option value="Đồng hồ cát">Đồng hồ cát</option>
+                    <option value="Dáng quả lê">Dáng quả lê</option>
+                    <option value="Dáng quả táo">Dáng quả táo</option>
+                    <option value="Mảnh khảnh">Mảnh khảnh</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="text-xs font-bold text-slate-600 block mb-1">Tone màu da</label>
+                  <select 
+                    value={avatarConfig.skinTone}
+                    onChange={(e) => setAvatarConfig({...avatarConfig, skinTone: e.target.value})}
+                    className="w-full border border-slate-200 rounded-lg p-2 text-sm"
+                  >
+                    <option value="Sáng">Trắng sáng</option>
+                    <option value="Trung bình">Trung bình / Tự nhiên</option>
+                    <option value="Bánh mật">Bánh mật / Ngăm</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="pt-4 border-t border-slate-100">
+                <span className="text-xs font-bold text-slate-400 uppercase">Đang thử sản phẩm</span>
+                <div className="flex items-center space-x-3 mt-2">
+                  <img src={selectedProduct.image} className="w-14 h-14 object-cover rounded-lg" />
                   <div>
-                    <h4 className="font-bold text-sm text-slate-800">{selectedProduct.name}</h4>
+                    <h4 className="font-bold text-xs text-slate-800">{selectedProduct.name}</h4>
                     <p className="text-xs font-bold text-amber-600">{selectedProduct.price.toLocaleString('vi-VN')} đ</p>
                   </div>
                 </div>
 
                 <button 
-                  onClick={handleTryOn}
+                  onClick={handleRealAITryOn}
                   disabled={isProcessing}
                   className="w-full mt-4 bg-gradient-to-r from-amber-500 to-amber-600 text-slate-900 font-bold py-3 rounded-xl shadow-lg hover:from-amber-400 hover:to-amber-500 transition disabled:opacity-50"
                 >
-                  {isProcessing ? "AI Đang Ghép Trang Phục..." : "🚀 Bắt Đầu Thử Đồ AI"}
+                  {isProcessing ? "Gemini AI Đang Phân Tích..." : "🚀 Gửi Yêu Cầu Cho AI Stylist"}
                 </button>
               </div>
             </div>
 
-            {/* Cột phải: Khung xem thử trang phục */}
             <div className="lg:col-span-8 bg-slate-900 text-white p-6 rounded-2xl shadow-xl flex flex-col justify-between">
               <div>
                 <h3 className="text-lg font-bold mb-2 flex items-center gap-2">
-                  <span>✨</span> Phòng Xem Mẫu Thử Đồ Ảo (AI Preview)
+                  <span>✨</span> Phòng Xem Mẫu Thử Đồ & AI Stylist Tư Vấn
                 </h3>
-                <p className="text-xs text-slate-400 mb-6">Mô phỏng hình ảnh trực quan khi bạn mặc bộ trang phục này</p>
+                <p className="text-xs text-slate-400 mb-6">Kết quả phân tích trực tiếp từ mô hình Gemini AI</p>
               </div>
 
               <div className="flex-1 min-h-[380px] bg-slate-800/50 rounded-xl border border-slate-700/50 flex items-center justify-center p-6 relative overflow-hidden">
                 {isProcessing ? (
                   <div className="text-center">
                     <div className="w-12 h-12 border-4 border-amber-400 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-                    <p className="text-amber-400 font-bold text-sm">AI đang xử lý ánh sáng, phom dáng và chất liệu...</p>
+                    <p className="text-amber-400 font-bold text-sm">Gemini AI đang nhận diện thông số và đánh giá phom dáng...</p>
                   </div>
-                ) : tryOnResult ? (
-                  <div className="w-full h-full flex flex-col md:flex-row items-center justify-center gap-6">
-                    <div className="relative group">
-                      <img src={tryOnResult} alt="Result" className="h-80 rounded-lg object-cover shadow-2xl border-2 border-amber-400/50" />
-                      <span className="absolute bottom-2 left-2 bg-slate-900/80 text-amber-400 text-xs px-2 py-1 rounded backdrop-blur">
-                        Kết quả AI Virtual Try-On
-                      </span>
+                ) : aiAnalysis ? (
+                  <div className="w-full flex flex-col md:flex-row items-center gap-6">
+                    <img src={aiAnalysis.image} alt="Product" className="h-64 rounded-lg object-cover shadow-2xl border-2 border-amber-400/50" />
+                    <div className="bg-slate-800 p-5 rounded-xl border border-slate-700 flex-1">
+                      <span className="text-xs font-bold text-amber-400 uppercase tracking-wider block mb-2">💬 Lời Khuyên Từ AI Stylist:</span>
+                      <p className="text-xs md:text-sm text-slate-200 leading-relaxed whitespace-pre-line">{aiAnalysis.text}</p>
+                      <button 
+                        onClick={() => addToCart(selectedProduct)}
+                        className="w-full mt-4 bg-amber-400 text-slate-900 font-bold py-2.5 rounded-lg text-xs hover:bg-amber-300 transition"
+                      >
+                        Thêm Vào Giỏ Hàng
+                      </button>
                     </div>
-
-                    {fitScore && (
-                      <div className="bg-slate-800 p-4 rounded-xl border border-slate-700 max-w-xs w-full">
-                        <span className="text-xs font-bold text-amber-400 uppercase tracking-wider">Đánh Giá Độ Phù Hợp AI</span>
-                        <div className="text-4xl font-black text-white my-2">{fitScore.overall}%</div>
-                        <div className="space-y-2 text-xs text-slate-300">
-                          <p>🎨 Tone da: <span className="text-emerald-400 font-bold">{fitScore.colorMatch}</span></p>
-                          <p>👗 Dáng người: <span className="text-emerald-400 font-bold">{fitScore.shapeMatch}</span></p>
-                        </div>
-                        <button 
-                          onClick={() => addToCart(selectedProduct)}
-                          className="w-full mt-4 bg-amber-400 text-slate-900 font-bold py-2 rounded-lg text-xs hover:bg-amber-300"
-                        >
-                          Thêm Bộ Phối Này Vào Giỏ
-                        </button>
-                      </div>
-                    )}
                   </div>
                 ) : (
                   <div className="text-center text-slate-500">
-                    <span className="text-4xl block mb-2">💃</span>
-                    <p className="text-sm">Bấm "Bắt Đầu Thử Đồ AI" để xem kết quả mô phỏng</p>
+                    <span className="text-4xl block mb-2">👗</span>
+                    <p className="text-sm">Nhập API Key và bấm "Gửi Yêu Cầu Cho AI Stylist" để nhận phân tích chi tiết</p>
                   </div>
                 )}
               </div>
 
-              {/* Danh sách chọn nhanh sản phẩm khác */}
               <div className="mt-6 pt-4 border-t border-slate-800">
-                <span className="text-xs text-slate-400 block mb-3">Đổi sản phẩm thử:</span>
+                <span className="text-xs text-slate-400 block mb-3">Chọn mẫu khác để thử:</span>
                 <div className="flex space-x-3 overflow-x-auto pb-2">
                   {PRODUCTS.map(p => (
                     <img 
@@ -385,9 +344,8 @@ function App() {
         )}
       </main>
 
-      {/* Footer */}
       <footer className="bg-slate-900 text-slate-400 text-center py-6 text-xs border-t border-slate-800">
-        <p>© 2026 AI Fashion Studio. Tất cả mã nguồn đã được tối ưu sẵn sàng cho GitHub Pages.</p>
+        <p>© 2026 AI Fashion Studio. Powered by Google Gemini API.</p>
       </footer>
     </div>
   );
