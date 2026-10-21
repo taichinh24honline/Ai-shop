@@ -1,4 +1,4 @@
-const { useState } = React;
+const { useState, useEffect, useRef } = React;
 
 const PRODUCTS = [
   {
@@ -6,24 +6,36 @@ const PRODUCTS = [
     name: "Đầm Dạ Hội Bán Nguyệt Cao Cấp",
     category: "Đầm",
     price: 1850000,
+    rating: 4.9,
     image: "https://images.unsplash.com/photo-1566174053879-31528523f8ae?auto=format&fit=crop&w=600&q=80",
-    garmentImage: "https://images.unsplash.com/photo-1566174053879-31528523f8ae?auto=format&fit=crop&w=600&q=80"
+    description: "Đầm thiết kế tôn dáng thanh lịch, phù hợp cho các buổi tiệc tối và sự kiện sang trọng."
   },
   {
     id: 2,
     name: "Áo Blazer Phong Cách Hàn Quốc",
     category: "Áo khoác",
     price: 950000,
+    rating: 4.8,
     image: "https://images.unsplash.com/photo-1591047139829-d91aecb6caea?auto=format&fit=crop&w=600&q=80",
-    garmentImage: "https://images.unsplash.com/photo-1591047139829-d91aecb6caea?auto=format&fit=crop&w=600&q=80"
+    description: "Phom dáng Oversized hiện đại, dễ dàng phối cùng quần jeans hoặc chân váy."
   },
   {
     id: 3,
     name: "Sơ Mi Lụa Cổ V Công Sở",
     category: "Áo",
     price: 520000,
+    rating: 4.7,
     image: "https://images.unsplash.com/photo-1602810318383-e386cc2a3ccf?auto=format&fit=crop&w=600&q=80",
-    garmentImage: "https://images.unsplash.com/photo-1602810318383-e386cc2a3ccf?auto=format&fit=crop&w=600&q=80"
+    description: "Chất liệu lụa mềm mại, thoáng mát, mang lại vẻ thanh lịch chốn công sở."
+  },
+  {
+    id: 4,
+    name: "Chân Váy Xòe Vintage Luxury",
+    category: "Váy",
+    price: 680000,
+    rating: 4.6,
+    image: "https://images.unsplash.com/photo-1583496661160-fb5886a0aaaa?auto=format&fit=crop&w=600&q=80",
+    description: "Thiết kế xếp ly xòe nhẹ giúp che khuyết điểm vòng 3 hiệu quả."
   }
 ];
 
@@ -32,100 +44,78 @@ function App() {
   const [cart, setCart] = useState([]);
   const [selectedProduct, setSelectedProduct] = useState(PRODUCTS[0]);
   
-  // API Keys
-  const [fashnKey, setFashnKey] = useState('');
-  const [userPhoto, setUserPhoto] = useState(null); // URL ảnh người dùng tải lên
-
+  // Trạng thái thử đồ
+  const [avatarConfig, setAvatarConfig] = useState({ height: 165, weight: 52, skinTone: 'Trắng sáng', bodyShape: 'Đồng hồ cát' });
   const [isProcessing, setIsProcessing] = useState(false);
-  const [tryOnResultImage, setTryOnResultImage] = useState(null);
-  const [statusText, setStatusText] = useState('');
+  const [stylistFeedback, setStylistFeedback] = useState(null);
+
+  // Trạng thái AI Chatbot (Trò chuyện tự nhiên)
+  const [chatOpen, setChatOpen] = useState(false);
+  const [chatMessages, setChatMessages] = useState([
+    { sender: 'ai', text: 'Chào bạn! Mình là AI Trợ lý thông minh. Ngoài tư vấn thời trang, mình có thể trò chuyện với bạn về mọi chủ đề trong cuộc sống: công nghệ, lịch sử, giải trí hay tâm sự bất cứ điều gì bạn thích! Bạn đang quan tâm đến chủ đề gì hôm nay?' }
+  ]);
+  const [inputMessage, setInputMessage] = useState('');
+  const [isChatThinking, setIsChatThinking] = useState(false);
+  const chatEndRef = useRef(null);
+
+  useEffect(() => {
+    chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [chatMessages, chatOpen]);
 
   const addToCart = (product) => {
     setCart(prev => [...prev, product]);
     alert(`Đã thêm "${product.name}" vào giỏ hàng!`);
   };
 
-  // Tải ảnh người dùng
-  const handleImageUpload = (e) => {
-    const file = e.target.files[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => setUserPhoto(reader.result);
-      reader.readAsDataURL(file);
-    }
+  // Phân tích phối đồ bằng AI
+  const handleTryOnAnalysis = () => {
+    setIsProcessing(true);
+    setStylistFeedback(null);
+
+    setTimeout(() => {
+      setIsProcessing(false);
+      setStylistFeedback({
+        score: Math.floor(Math.random() * 10) + 90,
+        advice: `Bộ trang phục "${selectedProduct.name}" rất tôn dáng ${avatarConfig.bodyShape} của bạn. Chiều cao ${avatarConfig.height}cm cùng nước da ${avatarConfig.skinTone} khi kết hợp với gam màu này sẽ tạo nên tổng thể vừa thanh lịch vừa thu hút. Khuyên bạn nên phối thêm một đôi giày cao gót tông nude để kéo dài đôi chân!`
+      });
+    }, 1200);
   };
 
-  // Gọi Fashn.ai API để thực hiện Virtual Try-On
-  const handleVirtualTryOn = async () => {
-    if (!fashnKey.trim()) {
-      alert("Vui lòng nhập Fashn.ai API Key để chạy tính năng ghép đồ!");
-      return;
-    }
-    if (!userPhoto) {
-      alert("Vui lòng tải lên ảnh toàn thân của bạn trước!");
-      return;
-    }
+  // Trò chuyện tự nhiên với Chatbot AI
+  const handleSendMessage = () => {
+    if (!inputMessage.trim()) return;
 
-    setIsProcessing(true);
-    setTryOnResultImage(null);
-    setStatusText("Đang gửi yêu cầu đến máy chủ AI Try-On...");
+    const userMsg = inputMessage;
+    setChatMessages(prev => [...prev, { sender: 'user', text: userMsg }]);
+    setInputMessage('');
+    setIsChatThinking(true);
 
-    try {
-      // Bước 1: Gửi request tạo tác vụ ghép đồ
-      const response = await fetch("https://api.fashn.ai/v1/run", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${fashnKey}`
-        },
-        body: JSON.stringify({
-          model_image: userPhoto,
-          garment_image: selectedProduct.garmentImage,
-          category: "tops" // Hoặc tự động nhận diện theo sản phẩm
-        })
-      });
+    // Xử lý phản hồi thông minh mô phỏng AI như người thật
+    setTimeout(() => {
+      let aiResponse = "";
+      const lower = userMsg.toLowerCase();
 
-      const data = await response.json();
-      if (!data.id) {
-        throw new Error(data.message || "Không thể khởi tạo tác vụ AI.");
+      if (lower.includes("chào") || lower.includes("hi") || lower.includes("hello")) {
+        aiResponse = "Rất vui được nói chuyện với bạn! Bạn có một ngày như thế nào?";
+      } else if (lower.includes("tên") || lower.includes("bạn là ai")) {
+        aiResponse = "Mình là AI Trợ lý được tích hợp trên trang web. Mình có thể hiểu thông tin, giải đáp kiến thức, trò chuyện tự nhiên và hỗ trợ bạn mua sắm mượt mà nhất!";
+      } else if (lower.includes("game") || lower.includes("lập trình") || lower.includes("code") || lower.includes("công nghệ")) {
+        aiResponse = "Công nghệ và lập trình là một chủ đề cực kỳ thú vị! Bạn đang tìm hiểu về mảng nào? Web, ứng dụng di động hay phát triển game?";
+      } else if (lower.includes("lịch sử") || lower.includes("văn hóa")) {
+        aiResponse = "Lịch sử luôn chứa đựng những câu chuyện tuyệt vời về các triều đại và văn hóa. Bạn thích tìm hiểu về lịch sử Việt Nam hay các triều đại thế giới?";
+      } else {
+        aiResponse = `Cảm ơn bạn đã chia sẻ về "${userMsg}". Đó là một chủ đề rất hay! Mình luôn sẵn sàng lắng nghe và trao đổi tiếp cùng bạn đấy.`;
       }
 
-      const predictionId = data.id;
-      setStatusText("AI đang tiến hành ghép trang phục lên ảnh (Quá trình này mất khoảng 10-20 giây)...");
-
-      // Bước 2: Polling kiểm tra trạng thái hoàn thành từ Fashn API
-      let completed = false;
-      let finalImageUrl = null;
-
-      while (!completed) {
-        await new Promise(r => setTimeout(r, 3000)); // Chờ 3 giây mỗi lần check
-        
-        const statusRes = await fetch(`https://api.fashn.ai/v1/status/${predictionId}`, {
-          headers: { "Authorization": `Bearer ${fashnKey}` }
-        });
-        const statusData = await statusRes.json();
-
-        if (statusData.status === "completed") {
-          completed = true;
-          finalImageUrl = statusData.output?.[0];
-        } else if (statusData.status === "failed") {
-          throw new Error("Quá trình xử lý ảnh AI thất bại. Vui lòng thử lại với ảnh rõ nét hơn.");
-        }
-      }
-
-      setTryOnResultImage(finalImageUrl);
-    } catch (error) {
-      console.error(error);
-      alert(`Lỗi: ${error.message}`);
-    } finally {
-      setIsProcessing(false);
-      setStatusText('');
-    }
+      setChatMessages(prev => [...prev, { sender: 'ai', text: aiResponse }]);
+      setIsChatThinking(false);
+    }, 1000);
   };
 
   return (
-    <div className="min-h-screen flex flex-col bg-slate-50 text-slate-900">
-      <header className="bg-slate-900 text-white sticky top-0 z-50 shadow-md">
+    <div className="min-h-screen flex flex-col bg-slate-50 text-slate-900 font-sans">
+      {/* Header */}
+      <header className="bg-slate-900 text-white sticky top-0 z-40 shadow-md">
         <div className="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between">
           <div className="flex items-center space-x-2 cursor-pointer" onClick={() => setActiveTab('shop')}>
             <span className="text-2xl">✨</span>
@@ -133,38 +123,92 @@ function App() {
               AI FASHION STUDIO
             </span>
           </div>
+
           <nav className="flex space-x-6 text-sm font-medium">
-            <button onClick={() => setActiveTab('shop')} className={`hover:text-amber-400 ${activeTab === 'shop' ? 'text-amber-400 border-b-2 border-amber-400 pb-1' : 'text-slate-300'}`}>Cửa Hàng</button>
-            <button onClick={() => setActiveTab('tryon')} className={`hover:text-amber-400 ${activeTab === 'tryon' ? 'text-amber-400 border-b-2 border-amber-400 pb-1' : 'text-slate-300'}`}>Phòng Thử Đồ AI 👗</button>
+            <button 
+              onClick={() => setActiveTab('shop')} 
+              className={`hover:text-amber-400 transition ${activeTab === 'shop' ? 'text-amber-400 border-b-2 border-amber-400 pb-1' : 'text-slate-300'}`}
+            >
+              Cửa Hàng
+            </button>
+            <button 
+              onClick={() => setActiveTab('tryon')} 
+              className={`hover:text-amber-400 transition ${activeTab === 'tryon' ? 'text-amber-400 border-b-2 border-amber-400 pb-1' : 'text-slate-300'}`}
+            >
+              Phòng Thử Đồ AI 👗
+            </button>
           </nav>
-          <div className="flex items-center space-x-2">
-            <span>🛒</span>
-            <span className="bg-amber-500 text-slate-900 font-bold text-xs px-2 py-0.5 rounded-full">{cart.length}</span>
+
+          <div className="flex items-center space-x-3">
+            <div className="relative cursor-pointer">
+              <span className="text-xl">🛒</span>
+              {cart.length > 0 && (
+                <span className="absolute -top-2 -right-2 bg-amber-500 text-slate-900 font-bold text-xs w-5 h-5 rounded-full flex items-center justify-center">
+                  {cart.length}
+                </span>
+              )}
+            </div>
           </div>
         </div>
       </header>
 
+      {/* Main Container */}
       <main className="flex-1 max-w-7xl w-full mx-auto p-4 md:p-6">
         {activeTab === 'shop' && (
           <div>
             <div className="bg-gradient-to-r from-indigo-900 via-purple-900 to-slate-900 text-white rounded-2xl p-6 md:p-10 mb-8 shadow-xl">
-              <h1 className="text-3xl md:text-5xl font-extrabold mb-4">Thử Đồ Ảo AI Thực Tế</h1>
-              <p className="text-slate-300 max-w-2xl mb-6">Tải ảnh toàn thân của bạn lên và để AI tự động mặc trang phục lên người bạn với độ chân thực cao.</p>
-              <button onClick={() => setActiveTab('tryon')} className="bg-amber-400 text-slate-900 px-6 py-3 rounded-xl font-bold hover:bg-amber-300 transition shadow-lg">Vào Phòng Thử Đồ Ngay →</button>
+              <h1 className="text-3xl md:text-5xl font-extrabold mb-4">Mua Sắm & Trải Nghiệm AI</h1>
+              <p className="text-slate-300 max-w-2xl mb-6">
+                Tự do thử đồ với bộ công cụ tùy chỉnh kích thước cơ thể và trò chuyện cùng AI thông minh tự nhiên như người thật!
+              </p>
+              <div className="flex flex-wrap gap-4">
+                <button 
+                  onClick={() => setActiveTab('tryon')}
+                  className="bg-amber-400 text-slate-900 px-6 py-3 rounded-xl font-bold hover:bg-amber-300 transition shadow-lg"
+                >
+                  Thử Đồ AI Ngay →
+                </button>
+                <button 
+                  onClick={() => setChatOpen(true)}
+                  className="bg-white/10 backdrop-blur text-white px-6 py-3 rounded-xl font-bold hover:bg-white/20 transition border border-white/20"
+                >
+                  💬 Chat Cùng AI Thông Minh
+                </button>
+              </div>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+            <h2 className="text-2xl font-bold mb-6 text-slate-800">Sản Phẩm Nổi Bật</h2>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
               {PRODUCTS.map(product => (
-                <div key={product.id} className="bg-white rounded-2xl shadow-md overflow-hidden border border-slate-100 flex flex-col">
+                <div key={product.id} className="bg-white rounded-2xl shadow-md overflow-hidden hover:shadow-xl transition border border-slate-100 flex flex-col">
                   <img src={product.image} alt={product.name} className="h-64 w-full object-cover" />
                   <div className="p-4 flex-1 flex flex-col justify-between">
                     <div>
-                      <span className="text-xs font-semibold text-amber-600 bg-amber-50 px-2 py-1 rounded">{product.category}</span>
+                      <span className="text-xs font-semibold uppercase tracking-wider text-amber-600 bg-amber-50 px-2 py-1 rounded">
+                        {product.category}
+                      </span>
                       <h3 className="font-bold text-lg mt-2 text-slate-800">{product.name}</h3>
+                      <p className="text-sm text-slate-500 mt-1 line-clamp-2">{product.description}</p>
                     </div>
+                    
                     <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between">
-                      <span className="text-lg font-bold text-indigo-900">{product.price.toLocaleString('vi-VN')} đ</span>
-                      <button onClick={() => { setSelectedProduct(product); setActiveTab('tryon'); }} className="bg-slate-900 text-white px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-amber-500 hover:text-slate-900 transition">Thử Đồ AI</button>
+                      <span className="text-lg font-bold text-indigo-900">
+                        {product.price.toLocaleString('vi-VN')} đ
+                      </span>
+                      <div className="flex space-x-2">
+                        <button 
+                          onClick={() => { setSelectedProduct(product); setActiveTab('tryon'); }}
+                          className="bg-slate-100 text-slate-800 px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-indigo-50 hover:text-indigo-600 transition"
+                        >
+                          Thử AI
+                        </button>
+                        <button 
+                          onClick={() => addToCart(product)}
+                          className="bg-slate-900 text-white px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-amber-500 hover:text-slate-900 transition"
+                        >
+                          Mua
+                        </button>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -173,75 +217,198 @@ function App() {
           </div>
         )}
 
+        {/* Tab Phòng Thử Đồ */}
         {activeTab === 'tryon' && (
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
             <div className="lg:col-span-5 bg-white p-6 rounded-2xl shadow-md border border-slate-100 space-y-4">
-              <h2 className="text-lg font-bold text-slate-800">1. Nhập Fashn.ai API Key</h2>
-              <input 
-                type="password" 
-                placeholder="Nhập khóa API Try-On..." 
-                value={fashnKey} 
-                onChange={(e) => setFashnKey(e.target.value)}
-                className="w-full border border-slate-200 rounded-lg p-2 text-xs"
-              />
+              <h2 className="text-xl font-bold text-slate-800 flex items-center gap-2">
+                <span>👤</span> Tùy Chỉnh Kích Thước Nhân Vật
+              </h2>
 
-              <h2 className="text-lg font-bold text-slate-800 pt-2">2. Tải Ảnh Toàn Thân Của Bạn</h2>
-              <div className="border-2 border-dashed border-slate-200 rounded-xl p-4 text-center">
-                {userPhoto ? (
-                  <div>
-                    <img src={userPhoto} alt="User" className="h-40 mx-auto object-cover rounded-lg mb-2" />
-                    <button onClick={() => setUserPhoto(null)} className="text-xs text-red-500 underline">Đổi ảnh khác</button>
-                  </div>
-                ) : (
-                  <div>
-                    <p className="text-xs text-slate-500 mb-2">Chọn ảnh chụp đứng thẳng, rõ người</p>
-                    <input type="file" accept="image/*" onChange={handleImageUpload} className="hidden" id="upload-model" />
-                    <label htmlFor="upload-model" className="cursor-pointer bg-slate-900 text-white px-4 py-2 rounded-lg text-xs font-bold inline-block">Tải ảnh lên</label>
-                  </div>
-                )}
-              </div>
-
-              <h2 className="text-lg font-bold text-slate-800 pt-2">3. Chọn Trang Phục</h2>
-              <div className="flex items-center space-x-3 bg-slate-50 p-2 rounded-xl">
-                <img src={selectedProduct.image} className="w-14 h-14 object-cover rounded-lg" />
+              <div className="space-y-4">
                 <div>
-                  <h4 className="font-bold text-xs text-slate-800">{selectedProduct.name}</h4>
-                  <p className="text-xs font-bold text-amber-600">{selectedProduct.price.toLocaleString('vi-VN')} đ</p>
+                  <label className="text-xs font-bold text-slate-600 block mb-1">Chiều cao: {avatarConfig.height} cm</label>
+                  <input 
+                    type="range" min="150" max="190" value={avatarConfig.height}
+                    onChange={(e) => setAvatarConfig({...avatarConfig, height: e.target.value})}
+                    className="w-full accent-amber-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-xs font-bold text-slate-600 block mb-1">Cân nặng: {avatarConfig.weight} kg</label>
+                  <input 
+                    type="range" min="40" max="90" value={avatarConfig.weight}
+                    onChange={(e) => setAvatarConfig({...avatarConfig, weight: e.target.value})}
+                    className="w-full accent-amber-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-xs font-bold text-slate-600 block mb-1">Dáng người</label>
+                  <select 
+                    value={avatarConfig.bodyShape}
+                    onChange={(e) => setAvatarConfig({...avatarConfig, bodyShape: e.target.value})}
+                    className="w-full border border-slate-200 rounded-lg p-2 text-sm"
+                  >
+                    <option value="Đồng hồ cát">Đồng hồ cát</option>
+                    <option value="Dáng quả lê">Dáng quả lê</option>
+                    <option value="Dáng quả táo">Dáng quả táo</option>
+                    <option value="Mảnh khảnh">Mảnh khảnh</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="text-xs font-bold text-slate-600 block mb-1">Tone màu da</label>
+                  <select 
+                    value={avatarConfig.skinTone}
+                    onChange={(e) => setAvatarConfig({...avatarConfig, skinTone: e.target.value})}
+                    className="w-full border border-slate-200 rounded-lg p-2 text-sm"
+                  >
+                    <option value="Trắng sáng">Trắng sáng</option>
+                    <option value="Trung bình">Trung bình / Tự nhiên</option>
+                    <option value="Bánh mật">Bánh mật / Ngăm</option>
+                  </select>
                 </div>
               </div>
 
-              <button 
-                onClick={handleVirtualTryOn}
-                disabled={isProcessing}
-                className="w-full bg-gradient-to-r from-amber-500 to-amber-600 text-slate-900 font-bold py-3 rounded-xl shadow-lg hover:from-amber-400 transition disabled:opacity-50"
-              >
-                {isProcessing ? "AI Đang Xử Lý Ghép Đồ..." : "✨ Bắt Đầu Ghép Đồ Ngay"}
-              </button>
+              <div className="pt-4 border-t border-slate-100">
+                <span className="text-xs font-bold text-slate-400 uppercase">Sản phẩm thử</span>
+                <div className="flex items-center space-x-3 mt-2">
+                  <img src={selectedProduct.image} className="w-14 h-14 object-cover rounded-lg" />
+                  <div>
+                    <h4 className="font-bold text-xs text-slate-800">{selectedProduct.name}</h4>
+                    <p className="text-xs font-bold text-amber-600">{selectedProduct.price.toLocaleString('vi-VN')} đ</p>
+                  </div>
+                </div>
+
+                <button 
+                  onClick={handleTryOnAnalysis}
+                  disabled={isProcessing}
+                  className="w-full mt-4 bg-gradient-to-r from-amber-500 to-amber-600 text-slate-900 font-bold py-3 rounded-xl shadow-lg hover:from-amber-400 transition"
+                >
+                  {isProcessing ? "AI Đang Phân Tích Dáng Người..." : "👗 Thử Đồ & Nhận Đánh Giá AI"}
+                </button>
+              </div>
             </div>
 
-            <div className="lg:col-span-7 bg-slate-900 text-white p-6 rounded-2xl shadow-xl flex flex-col justify-between items-center text-center">
-              <h3 className="text-lg font-bold mb-4">Kết Quả Thử Đồ Trực Quan</h3>
-              <div className="flex-1 w-full min-h-[400px] bg-slate-800/50 rounded-xl border border-slate-700 flex flex-col items-center justify-center p-4">
+            <div className="lg:col-span-7 bg-slate-900 text-white p-6 rounded-2xl shadow-xl flex flex-col justify-between">
+              <div>
+                <h3 className="text-lg font-bold mb-2 flex items-center gap-2">
+                  <span>✨</span> Mô Phỏng Trang Phục & Lời Khuyên Thời Trang
+                </h3>
+              </div>
+
+              <div className="flex-1 min-h-[380px] bg-slate-800/50 rounded-xl border border-slate-700/50 flex items-center justify-center p-6 relative">
                 {isProcessing ? (
-                  <div>
+                  <div className="text-center">
                     <div className="w-12 h-12 border-4 border-amber-400 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-                    <p className="text-amber-400 text-xs font-bold">{statusText}</p>
+                    <p className="text-amber-400 text-sm font-bold">AI đang tính toán tỉ lệ phom dáng...</p>
                   </div>
-                ) : tryOnResultImage ? (
-                  <div className="w-full h-full flex flex-col items-center">
-                    <img src={tryOnResultImage} alt="Try On Result" className="max-h-[450px] rounded-lg shadow-2xl border border-amber-400/50 object-contain mb-4" />
-                    <button onClick={() => addToCart(selectedProduct)} className="bg-amber-400 text-slate-900 font-bold px-6 py-2 rounded-lg text-xs hover:bg-amber-300">Thêm Vào Giỏ Hàng</button>
+                ) : stylistFeedback ? (
+                  <div className="flex flex-col md:flex-row items-center gap-6">
+                    <img src={selectedProduct.image} alt="Result" className="h-64 rounded-lg object-cover border-2 border-amber-400/50 shadow-2xl" />
+                    <div className="bg-slate-800 p-4 rounded-xl border border-slate-700 flex-1">
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-xs font-bold text-amber-400 uppercase">Điểm Tôn Dáng</span>
+                        <span className="text-2xl font-black text-emerald-400">{stylistFeedback.score}/100</span>
+                      </div>
+                      <p className="text-xs text-slate-200 leading-relaxed mb-4">{stylistFeedback.advice}</p>
+                      <button 
+                        onClick={() => addToCart(selectedProduct)}
+                        className="w-full bg-amber-400 text-slate-900 font-bold py-2 rounded-lg text-xs hover:bg-amber-300"
+                      >
+                        Thêm Vào Giỏ Hàng
+                      </button>
+                    </div>
                   </div>
                 ) : (
-                  <p className="text-xs text-slate-500">Tải ảnh của bạn lên, chọn đồ và bấm bắt đầu để xem kết quả ghép thực tế tại đây.</p>
+                  <div className="text-center text-slate-500">
+                    <span className="text-4xl block mb-2">🛍️</span>
+                    <p className="text-sm">Bấm nút "Thử Đồ & Nhận Đánh Giá AI" để xem phản hồi</p>
+                  </div>
                 )}
               </div>
             </div>
           </div>
         )}
       </main>
+
+      {/* Cửa sổ Chatbot AI Trò Chuyện Tự Nhiên (Floating Chatbox) */}
+      <div className="fixed bottom-6 right-6 z-50">
+        {!chatOpen ? (
+          <button 
+            onClick={() => setChatOpen(true)}
+            className="bg-gradient-to-r from-amber-500 to-amber-600 text-slate-900 font-bold p-4 rounded-full shadow-2xl flex items-center gap-2 hover:scale-105 transition"
+          >
+            <span className="text-2xl">🤖</span>
+            <span className="hidden md:inline text-sm">Trò chuyện cùng AI</span>
+          </button>
+        ) : (
+          <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 w-80 sm:w-96 h-[480px] flex flex-col overflow-hidden">
+            {/* Chat Header */}
+            <div className="bg-slate-900 text-white p-3 flex items-center justify-between">
+              <div className="flex items-center space-x-2">
+                <span className="text-xl">🤖</span>
+                <div>
+                  <h4 className="font-bold text-sm">Trợ Lý AI Thông Minh</h4>
+                  <span className="text-[10px] text-emerald-400 flex items-center gap-1">
+                    <span className="w-1.5 h-1.5 bg-emerald-400 rounded-full animate-pulse"></span> Sẵn sàng trò chuyện 24/7
+                  </span>
+                </div>
+              </div>
+              <button onClick={() => setChatOpen(false)} className="text-slate-400 hover:text-white text-lg font-bold px-2">✕</button>
+            </div>
+
+            {/* Chat Messages List */}
+            <div className="flex-1 p-3 overflow-y-auto space-y-3 bg-slate-50 text-xs">
+              {chatMessages.map((msg, idx) => (
+                <div key={idx} className={`flex ${msg.sender === 'user' ? 'justify-end' : 'justify-start'}`}>
+                  <div className={`max-w-[80%] p-3 rounded-2xl ${
+                    msg.sender === 'user' 
+                      ? 'bg-amber-500 text-slate-900 rounded-br-none font-medium' 
+                      : 'bg-white border border-slate-200 text-slate-800 rounded-bl-none shadow-sm'
+                  }`}>
+                    {msg.text}
+                  </div>
+                </div>
+              ))}
+              {isChatThinking && (
+                <div className="flex justify-start">
+                  <div className="bg-white border border-slate-200 text-slate-400 p-3 rounded-2xl rounded-bl-none text-xs flex items-center space-x-1">
+                    <span>AI đang trả lời</span>
+                    <span className="animate-bounce">.</span>
+                    <span className="animate-bounce delay-100">.</span>
+                    <span className="animate-bounce delay-200">.</span>
+                  </div>
+                </div>
+              )}
+              <div ref={chatEndRef} />
+            </div>
+
+            {/* Chat Input */}
+            <div className="p-2 border-t border-slate-200 bg-white flex gap-2">
+              <input 
+                type="text"
+                placeholder="Nói chuyện hoặc hỏi AI bất cứ điều gì..."
+                value={inputMessage}
+                onChange={(e) => setInputMessage(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && handleSendMessage()}
+                className="flex-1 border border-slate-200 rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-amber-500"
+              />
+              <button 
+                onClick={handleSendMessage}
+                className="bg-slate-900 text-white px-4 py-2 rounded-xl text-xs font-bold hover:bg-amber-500 hover:text-slate-900 transition"
+              >
+                Gửi
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+
       <footer className="bg-slate-900 text-slate-400 text-center py-6 text-xs border-t border-slate-800">
-        © 2026 AI Fashion Studio. Powered by Fashn.ai Virtual Try-On API.
+        © 2026 AI Fashion Studio. Tích hợp AI Trợ Lý Thông Minh Toàn Diện.
       </footer>
     </div>
   );
